@@ -272,7 +272,7 @@ SELECT score FROM student WHERE name='叶良辰';
 
 
 
-假如在table表的a,b,c三个列上建立联合索引，简要分类分析下联合索引的最左前缀匹配。
+假如在table表的 a, b, c 三个列上建立联合索引，简要分类分析下联合索引的最左前缀匹配。
 
 首先看等值查询：
 
@@ -438,12 +438,12 @@ B+树的形成过程：
 
 * **select_type**：查询的类型，主要是用于区别普通查询、联合查询、子查询等的复杂查询
 
-  1. SIMPLE：简单的select查询，查询中不包含子查询或者UNION。
-  2. PRIMARY：查询中包含任何复杂的子部分，最外层查询则被标记为PRIMARY
-  3. SUBQUERY：在FROM列表中包含的子查询被标记为DERIVED（衍生），MySQL会递归执行这些子查询，把结果放在临时表里。
-  4. DERIVED：在FROM列表中包含的子查询被标记为DERIVED（衍生）。MySQL会递归执行这些子查询，把结果放在临时表里。
-  5. UNION：若第二个SELECT出现在UNION之后，则被标记为UNION；若UNION包含在FROM子句的子查询中，外层SELECT将被标记为：DERIVED。
-  6. UNION RESULT：从UNION表中获取结果的SELECT。
+  * `SIMPLE`：简单的select查询，查询中不包含子查询或者UNION。
+  * `PRIMARY`：查询中包含任何复杂的子部分，最外层查询则被标记为PRIMARY
+  * `SUBQUERY`：在FROM列表中包含的子查询被标记为DERIVED（衍生），MySQL会递归执行这些子查询，把结果放在临时表里。
+  * `DERIVED`：在FROM列表中包含的子查询被标记为DERIVED（衍生）。MySQL会递归执行这些子查询，把结果放在临时表里。
+  * `UNION`：若第二个SELECT出现在UNION之后，则被标记为UNION；若UNION包含在FROM子句的子查询中，外层SELECT将被标记为：DERIVED。
+  * `UNION RESULT`：从UNION表中获取结果的SELECT。
 
 * **table**：显示这一行的数据是关于哪些表的。
 
@@ -453,14 +453,21 @@ B+树的形成过程：
   system > const > eq_ref > ref > fulltext > ref_or_null > index_merge > unique_subquery > index_subquery > range > index > All
   ```
 
-  - system：表只有一行记录（等于系统表），这是const类型的特例，平时不会出现，这个也可以忽略不计。
-  - const：表示通过索引一次就找到了，const用于比较primary key或则unique索引。因为只匹配一行数据，所以很快。如将主键置于where列表中，MySQL就能将该查询转换为一个常量。
-  - eq_ref：唯一性索引扫描，对于每个索引键，表中只有一条记录与之匹配。常见于主键或唯一索引扫描。
-  - ref：非唯一性索引扫描，返回匹配某个单独值的所有行。本质上也是一种索引访问，它返回所有匹配某个单独值的行，然而，它可能会找到多个符合条件的行，所以它应该属于查找和扫描的混合体。
-  - range：只检索给定范围的行，使用一个索引来选择行。key列显示使用了哪个索引。一般就是在你的where语句中出现了between、<、>、in等的查询。这种范围扫描索引扫描比全表扫描要好，因为它只需要开始于索引的某一点，而结束于另一点，不会扫描全部索引。
-  - index：Full Index Scan，index与All区别为index类型只遍历索引树。这通常比All快，因为索引文件通常比数据文件小。（也就是说虽然all和index都是读全表，但index是从索引中读取的，而all是从硬盘中读的）
-  - all：Full Table Scan，将遍历全表以找到匹配的行。
-  - 一般来说，得保证查询至少达到range级别，最好能达到ref。
+  - `system`：表只有一行记录（等于系统表），这是const类型的特例，平时不会出现，这个也可以忽略不计。
+
+  - `const`：表示通过索引一次就找到了，const用于比较primary key或则unique索引。因为只匹配一行数据，所以很快。如将主键置于where列表中，MySQL 就能将该查询转换为一个常量。
+
+  - `eq_ref`：唯一性索引扫描，对于每个索引键，表中只有一条记录与之匹配。常见于主键或唯一索引扫描。
+
+  - `ref`：非唯一性索引扫描，返回匹配某个单独值的所有行。本质上也是一种索引访问，它返回所有匹配某个单独值的行，然而，它可能会找到多个符合条件的行，所以它应该属于查找和扫描的混合体。
+
+  - `range`：只检索给定范围的行，使用一个索引来选择行。key 列显示使用了哪个索引。一般就是在你的where 语句中出现了between、<、>、in等的查询。这种范围扫描索引扫描比全表扫描要好，因为它只需要开始于索引的某一点，而结束于另一点，不会扫描全部索引。
+
+  - `index`：Full Index Scan，index 与 All 区别为 index 类型只遍历索引树。这通常比 All 快，因为索引文件通常比数据文件小。（也就是说虽然 all 和 index 都是读全表，但 index 是从索引中读取的，而 all 是从硬盘中读的）
+
+  - `all`：Full Table Scan，将遍历全表以找到匹配的行。
+
+    > 一般来说，得保证查询至少达到range级别，最好能达到ref。
 
 * **possible_keys**：显示可能应用在这张表中的索引，一个或多个。查询涉及到的字段上若存在索引，则该索引将被列出。但不一定被查询实际使用。
 
@@ -490,3 +497,708 @@ B+树的形成过程：
 ![](https://cdn.jsdelivr.net/gh/jlukey/image@main/img/20241009205133.png)
 
 ![](https://cdn.jsdelivr.net/gh/jlukey/image@main/img/20241009205148.png)
+
+
+
+# 4. 索引优化
+
+## 4.1 索引分析
+
+### 4.1.1单表分析
+
+建表语句:
+
+```sql
+CREATE TABLE IF NOT EXISTS `article` (
+    `Id`          INT(10) UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    `author_id`   INT(10) UNSIGNED NOT NULL,
+    `category_id` INT(10) UNSIGNED NOT NULL,
+    `views`       INT(10) UNSIGNED NOT NULL,
+    `comments`    INT(10) UNSIGNED NOT NULL,
+    `title`       VARBINARY(255)   NOT NULL,
+    `content`     TEXT             NOT NULL
+);
+```
+
+插入数据：
+
+```sql
+INSERT INTO article(author_id, category_id, views, comments, title, content) VALUES (1, 1, 1, 1,'1','1'),(2, 2, 2, 2, '2', '2'),(1, 1, 3, 3, '3','3');
+```
+
+查询 category_id为 1 且 comments 大于1的情况下, views 最多的 article_id。
+
+```sql
+EXPLAIN SELEcT id,author_id FROM article WHERE category_id = 1 AND comments > 1 ORDER BY views DESC LIMIT 1;
+```
+
+![image-20241010141513827](https://cdn.jsdelivr.net/gh/jlukey/image@main/img/image-20241010141513827.png)
+
+ 很显然, type 是 ALL,即最坏的情况。Extra 里还出现了 Using filesort,也是最坏的情况。优化是必须的。
+
+
+
+**开始优化 >> **
+
+新建索引：
+
+```sql
+create index idx_article_ccv on article(category_id, comments, views);
+```
+
+重新 explain：
+
+```sql
+EXPLAIN SELEcT id,author_id FROM article WHERE category_id = 1 AND comments > 1 ORDER BY views DESC LIMIT 1;
+```
+
+![image-20241010150340960](https://cdn.jsdelivr.net/gh/jlukey/image@main/img/image-20241010150340960.png)
+
+结论:
+
+type 变成了 range,这是可以忍受的。但是 extra 里使用 Using filesort 仍是无法接受的。但是我们已经建立了素引，为啥没用呢？这是因为按照 BTree 索引的工作原理，先排序 category_id，如果遇到相同的 category_id 则再排序 comments, 如果遇到相同的 comments 则再排序 views。当 comments 字段在联合素引里处于中间位置时，因comments>1条件是一个范围值(所谓 range)，MySQL 无法利用索引再对后面的 views 部分进行检索,即 range 类型查询字段后面的索引无效。
+
+
+
+### 4.1.2 两表分析
+
+建表语句：
+
+```sql
+CREATE TABLE IF NOT EXISTS `class`(
+  `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `card` INT(10) UNSIGNED NOT NULL,
+  PRIMARY KEY(`id`)
+);
+
+CREATE TABLE IF NOT EXISTS `book`(
+  `bookId` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `Card` INT(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`bookid`)
+);
+```
+
+插入数据：
+
+```sql
+INSERT INTO class(card) VALUES(FLOOR(1 +(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1 +(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1 +(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1 +(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1 +(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1 +(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1 +(RAND()*20)));
+INSERT INTO class(card) VALUES(FLOOR(1 +(RAND()*20)));
+```
+
+下面开始explain分析：
+
+```sql
+EXPLAIN SELECT * FROM class LEFT JOIN book ON class.card = book.card;
+```
+
+![image-20241010151530978](https://cdn.jsdelivr.net/gh/jlukey/image@main/img/image-20241010151530978.png)
+
+我们发现 type 有 AII。
+
+
+
+接下来，添加索引优化：
+
+```sql
+ALTER TABLE `book` ADD INDEX Y(`card`);
+```
+
+第2次explain:
+
+```sql
+EXPLAIN SELECT * FROM class LEFT JOIN book ON class.card = book.card;
+```
+
+![image-20241010151744320](https://cdn.jsdelivr.net/gh/jlukey/image@main/img/image-20241010151744320.png)
+
+可以看到第二行的 type 变为了 ref，rows 也变成了优化比较明显。这是由左连接特性决定的。LEFT JOIN 条件用于确定如何从右表搜索行,左边一定都有。所以右边是我们的关键点，一定需要建立索引。
+
+
+
+接下来，删除旧索引 + 新建 + 第3次 explain。
+
+```sql
+DROP INDEX Y ON book;
+
+ALTER TABLE class ADD INDEX X(card);
+
+EXPLAIN SELECT * FROM class LEFT JOIN book ON class.card = book.card;
+```
+
+![image-20241010152257580](https://cdn.jsdelivr.net/gh/jlukey/image@main/img/image-20241010152257580.png)
+
+
+
+然后来看一个右连接查询:
+
+```sql
+EXPLAIN SELECT * FROM class RIGHT JOIN book ON class.card = book.card;
+```
+
+![image-20241010152726175](https://cdn.jsdelivr.net/gh/jlukey/image@main/img/image-20241010152726175.png)
+
+优化较明显。这是因为 right join 条件用于确定如何从左表搜索行，右边一定都有，所以左边是我们的关键点，一定需要建立索引。
+
+
+
+换成右表建立索引：
+
+```sql
+DROP INDEX X ON class;
+ALTER TABLE book ADD INDEX Y(card);
+EXPLAIN SELECT * FROM class RIGHT JOIN book ON class.card = book.card;
+```
+
+![image-20241010152913267](https://cdn.jsdelivr.net/gh/jlukey/image@main/img/image-20241010152913267.png)
+
+右连接，基本无变化。
+
+
+
+> **左连接建右表，右连接建左表**。以左连接为例，左表的信息全都有，所以右表需要查找，所以为右表建立索引。
+
+
+
+### 4.1.3 join语句的优化
+
+- 尽可能减少 join 语句中的 NestedLoop 的循环总次数：“永远用小结果集驱动大的结果集”。
+- 优先优化 NestedLoop 的内层循环。
+- 保证 join 语句中被驱动表上 join 条件字段已经被索引。
+- 当无法保证被驱动表的 join 条件字段被索引且内存资源充足的前提下，不要太吝惜 joinBuffer 的设置。
+
+
+
+1. 如果索引了多列，要遵守最左前缀法则。指的是查询从索引的最左前列开始并且不跳过索引中的列。（带头大哥不能死，中间兄弟不能断）
+2. 不在索引列上作任何操作（计算、函数、（自动or手动）类型转换），会导致索引失效而转向全表扫描
+3. 存储引擎不能使用索引中范围条件右边的列。
+4. 中间兄弟别搞范围，要搞等值
+5. 尽量使用覆盖索引（只访问索引的查询（索引列和查询列一致）），减少select *
+6. mysql在使用不等于（！=或者<>）的时候无法使用索引会导致全表扫描
+7. is null，is not null也无法使用索引
+8. like以通配符开头(‘%abc…’)mysql索引失效会变成全表扫描的操作。
+9. or 会索引失效。
+
+![img](https://i-blog.csdnimg.cn/blog_migrate/0ce5c5a250ac92f3ea205c54e019ecae.png#pic_center)
+
+
+
+### 4.1.4 order by优化
+
+ORDER BY 子句，尽量使用 Index 方式排序(指排序走索引)，避免使用 FileSort 方式排序。
+
+如果对 where 条件字段未建索引，只对排序字段建索引，是不会使用索引的。
+
+
+
+MySQL支持二种方式的排序，FileSort和Index，**Index效率高，它指MySQL扫描索引本身完成排序**，FileSort方式效率较低。
+
+ORDER BY满足两情况（最佳左前缀原则），会使用Index方式排序。
+
+ORDER BY语句使用索引最左前列。
+
+使用where子句与OrderBy子句条件列组合满足索引最左前列。
+
+尽可能在索引列上完成排序操作，遵照索引建的**最佳左前缀.**
+
+**如果未在索引列上完成排序，mysql 会启动 filesort 的两种算法：双路排序和单路排序**。
+
+
+
+**双路排序**:
+
+MySQL4.1之前是使用双路排序，字面意思是两次扫描磁盘，最终得到数据。读取行指针和将要进行 order by 操作的列，对他们进行排序，然后扫描已经排序好的列表，按照列表中的值重新从列表中读取对应的数据传输。
+
+从磁盘取排序字段，在buffer进行排序，再从磁盘取其他字段。
+
+
+
+**单路排序**
+
+取一批数据，要对磁盘进行两次扫描，众所周知，I/O是很耗时的，所以在mysql4.1之后，出现了改进的算法，就是单路排序。
+
+从磁盘读取查询需要的所有列，按照将要进行 order by 的列，在 sort buffer 对它们进行排序，然后扫描排序后的列表进行输出，它的效率更快一些，避免了第二次读取数据，并且把随机 IO 变成顺序 IO，但是它会使用更多的空间，因为它把每一行都保存在内存中了。
+
+
+
+结论及引申出的问题：
+
+1. 由于单路是改进的算法，总体而言好过双路。
+2. n 在 sort_buffer 中，方法 B 比方法 A 要多占用很多空间，因为方法 B 是把所有字段都取出，所以有可能取出的数据的总大小超出了 sort_buffer 的容量，导致每次只能取 sort_buffer 容量大小的数据，进行排序（创建 tmp 文件，多路合并），排完再取取 sort_buffer 容量大小，再排…… 从而会导致多次 I/O。
+3. 本来想省一次I/O操作，反而导致了大量的/O操作，反而得不偿失。
+
+
+
+**遵循如下规则，可提高Order By的速度**
+
+order by 时 select * 是一个大忌，只 Query 需要的字段，这点非常重要。
+当 Query 的字段大小总和小于 max_length_for_sort_data，而且排序字段不是 TEXT|BLOB 类型时，会用改进后的算法——单路排序，否则用老算法——多路排序。
+
+l两种算法的数据都有可能超出 sort_buffer 的容量，超出之后，会创建 tmp 文件进行合并排序，导致多次 I/O ，但是用单路排序算法的风险会更大一些，所以要提高 sort_buffer_size 。
+
+尝试提高 sort_buffer_size不管用哪种算法，提高这个参数都会提高效率，当然，要根据系统的能力去提高，因为这个参数是针对每个进程的。
+
+尝试提高max_length_for_sort_data提高这个参数，会增加用改进算法的概率。但是如果设的太高，数据总容量超出sort_buffer_size的概率就增大，明显症状是高的磁盘I/O活动和低的处理器使用率。
+
+![image-20241011005224027](https://cdn.jsdelivr.net/gh/jlukey/image@main/img/image-20241011005224027.png)
+
+
+
+### 4.1.5 group by 优化
+
+group by 实质是**先排序后进行分组，遵照索引的最佳左前缀**。
+
+当无法使用索引列，增大max_length_for_sort_data参数的设置+增大sort_buffer_size参数的设置。
+
+where高于having，能写在where限定的条件就不要去having限定了。
+
+其余的规则均和 order by 一致。
+
+
+
+# 5. 慢查询日志
+
+MySQL 的慢查询日志是 MySQL 提供的一种日志记录，它用来记录在 MySQL 中响应时间超过阈值的语句，具体指运行时间超过 long_query_time 值的SQL，则会被记录到慢查询日志中。long_query_time 的默认值是10，意思是运行10秒以上的语句。由它来查看哪些 SQL 超出了我们的最大忍耐时间值，比如一条 sql 执行超过 5 秒钟，我们就算慢 SQL ，希望能收集超过 5 秒的 sql ，结合之前的 explain 进行全面分析。
+
+默认情况下，MySQL数据库没有开启慢查询日志，需要我们手动来设置这个参数。当然，如果不是调优需要的话，一般不建议启动该参数，因为开启慢查询日志会或多或少带来一定的性能影响。慢查询日志支持将日志记录写入文件。
+
+**查看是否开启慢查询日志：**
+
+```sql
+SHOW VARIABLES LIKE ‘%slow_query_log%’;
+```
+
+**开启慢查询日志：**
+
+```sql
+set global slow_query_log=1;
+```
+
+使用 `set global slow_query_log=1`  开启慢查询日志，只对当前数据库生效。如果 Mysql 重启后则会失效。
+
+如果要永久生效，就必须修改配置文件my.cnf(其它系统变量也是如此)。
+
+修改 my.cnf 文件，[mysqld] 下增加或修改参数 `slow_query_log` 和 `slow_query_log_file` 后，然后重启    MySQL 服务器。也即将如下两行配置进 my.cnf 文件。
+
+```sql
+slow query log =1
+slow query log file=/var/lib/mysql/atguigu-slow.log
+```
+
+关于慢查询的参数 `slow_query_log_file`，它指定慢查询日志文件的存放路径，系统默认会给一个缺省的文件host_name-slow.log (如果没有指定参数 `slow_query_log_file` 的话)。
+
+那么开启了慢查询日志后，什么样的SQL才会记录到慢查询日志里面呢？
+
+这个是由参数 `long_query_time` 控制，默认情况下 `long_query_time` 的值为 10 秒,
+
+```sql
+SHOW VARIABLES LIKE 'long_query_time%';
+```
+
+![image-20241010232605546](https://cdn.jsdelivr.net/gh/jlukey/image@main/img/image-20241010232605546.png)
+
+可以使用命令修改，也可以在 my.cnf 参数里面修改。
+
+假如运行时间正好等于 `long_query_time` 的情况，并不会被记录下来。也就是说在 mysql 源码里是判断大于`long_query_time`，而非大于等于。
+
+**设置慢查询的阈值时间：**
+
+```sql
+set global long_query_time=3;
+```
+
+**查询当前系统中有多少条慢查询记录：**
+
+```sql
+show global status like '%slow_queries%';
+```
+
+
+
+#  6. 日志分析工具mysqldumpslow
+
+在生产环境中，如果要手工分析日志，查找、分析SQL，显然是个体力活，MySQL提供了日志分析工具 mysqldumpslow。
+
+查看mysqldumpslow的帮助信息：
+
+```bash
+mysqldumpslow --help
+```
+
+- s：是表示按照何种方式排序
+- c：访问次数
+- I：锁定时间
+- r：返回记录
+- t：查询时间
+- al：平均锁定时间
+- ar：平均返回记录数
+- at：平均查询时间
+- t：即为返回前面多少条的数据
+- g：后边搭配一个正则匹配模式，大小写不敏感
+
+工作常用参考:
+
+```bash
+# 得到返回记录集最多的10个SQL
+mysqldumpslow -s r -t 10 /var/lib/mysql/atguigu-slow.log
+
+#得到访问次数最多的10个SQL
+mysqldumpslow -s c -t 10 /var/lib/mysql/atguigu-slow.log
+#得到按照时间排序的前10条里面含有左连接的查询语句
+mysqldumpslow -s t -t 10 -g "left join" /var/lib/mysql/atguigu-slow.log
+#另外建议在使用这些命令时结合|和 more 使用，否则有可能出现爆屏情况
+mysqldumpslow -s r -t 10 /var/lib/mysgl/atguigu-slow.log | more
+```
+
+
+
+# 7. Show Profile
+
+Show Profile 是 mysql 提供的可以用来分析当前会话中语句执行的资源消耗情况。可以用于 SQL 调优的测量。
+
+默认情况下，参数处于关闭状态，并保存最近15次的运行结果。
+
+**分析步骤：**
+
+1. 是否支持，看看当前的mysql版本是否支持
+
+   ```sql
+   show variables like 'profiling';
+   ```
+
+2. 开启
+
+   ```sql
+   set profiling = on;
+   ```
+
+3. 运行SQL
+
+   ```sql
+   select * from emp group by id%10 limit 150000;
+   select * from emp group by id%20 order by 5;
+   ```
+
+4. 查看结果：`show profiles;`
+
+5. 诊断 SQL：`show profile cpu, block io for query [上一步前面的问题SQL数字号码];`
+
+**type:**
+
+* `ALL`: 显示所有的开销信息CONTEXT SWITCHES -上下文切换相关开销。
+* `BLOCK IO`：显示块IO相关开销。
+* `CONTEXT SWITCHES`: 上下文切换相关开销。
+* `CPU`: 显示CPU相关开销信息。
+* `IPC`: 显示发送和接收相关开销信息
+* `MEMORY`: 显示内存相关开销信息。
+* `PAGE FAULTS`: 显示页面错误相关开销信息。
+* `SOURCE`: 显示和Source function, Source file, Source line 相关的开销信息。
+* `SWAPS`: 显示交换次数相关开销的信息。
+
+
+
+# 8. 全局查询日志
+
+**通过配置启用：**
+
+​	在 mysql 的 my.cnf 中，设置如下:
+
+​	开启: `general_log=1`
+
+​	记录日志文件的路径: `general_log_file=/path/logfile`
+
+​	输出格式: `log_output=FILE`
+
+**通过编码启用:**
+
+```sql
+set global_general_log=1;
+set global_log_output='TABLE';
+```
+
+此后 ，你所编写的 sql 语句，将会记录到 mysql 库里的 generallog 表，可以用下面的命令查看:
+
+```sql
+select * from mysgl.general_log;
+```
+
+> **永远不要在生产环境开启这个功能！**
+
+
+
+# 9. MySQL锁机制
+
+锁是计算机协调多个进程或线程并发访问某一资源的机制。
+
+在数据库中，除传统的计算资源 (如 CPU、RAM、I/0 等) 的争用以外，数据也是一种供许多用户共享的资源。如何保证数据并发访问的一致性、有效性是所有数据库必须解决的一个问题，锁冲突也是影响数据库并发访问性能的一个重要因素。从这个角度来说，锁对数据库而言显得尤其重要，也更加复杂。
+
+
+
+## 9.1 锁的分类
+
+**从对数据操作的类型（读/写）分：**
+
+- 读锁（共享锁）：针对同一份数据，多个读操作可以同时进行而不会互相影响。
+- 写锁（排它锁）：当前写操作没有完成前，它会阻断其他写锁和读锁。
+
+**从对数据操作的粒度分：**
+
+- 表锁
+- 行锁
+
+为了尽可能提高数据库的并发度，每次锁定的数据范围越小越好，理论上每次只锁定当前操作的数据的方案会得到最大的并发度，但是管理锁是很耗资源的事情（涉及获取，检查，释放锁等动作），因此数据库系统需要在高并发响应和系统性能两方面进行平衡，这样就产生了“锁粒度（Lock granularity）”的概念。
+
+一种提高共享资源并发性的方式是让锁定对象更有选择性。尽量只锁定需要修改的部分数据，而不是所有的资源。更理想的方式是只对修改的数据片进行精确的锁定。任何时候，在给定的资源上，锁定的数据量越少，则系统的并发程度越高，只要相互之间不发生冲突即可。
+
+
+
+## 9.2 表锁（偏读）
+
+特点：偏向 MyISAM 存储引擎，开销小，加锁快；无死锁；锁定粒度大，发生锁冲突的概率最高，并发度最低。
+
+> 读锁会阻塞写，但是不会阻塞读。而写锁则会把读和写都阻塞
+
+
+
+## 9.3 行锁（偏写）
+
+特点：偏向Innodb存储引擎，开销大，加锁慢；会出现死锁；锁定粒度小，发生锁冲突的概率最低，并发度也最高。
+
+Innodb 与 MyISAM 的最大不同有两点：
+
+- 一是支持事务（TRANSACTION）
+- 二是采用了行级锁
+
+> **没有索引或者索引失效时，InnoDB 的行锁会升级为表锁！**
+>
+> **原因：Mysql 的行锁是通过索引实现的！**
+
+
+
+## 9.4 事务
+
+事务是由一组SQL语句组成的逻辑处理单元，事务具有以下4个属性，通常简称为事务的ACID属性
+
+* **原子性**（Atomicity）：事务是一个原子操作单元，其对数据的修改，要么全都执行，要么全都不执行。
+* **一致性**（Consistent）：在事务开始和完成时，数据都必须保持一致状态。这意味着所有相关的数据规则都必须应用于事务的修改，以保持数据的完整性；事务结束时，所有的内部数据结构（如B树索引或双向链表）也都必须是正确的。
+* **隔离性**（Isolation）：数据库系统提供一定的隔离机制，保证事务在不受外部并发操作影响的“独立”环境执行。这意味着事务处理过程中的中间状态对外部是不可见的，反之亦然。
+* **持久性**（Durable）：事务完成之后，它对于数据的修改是永久性的，即使出现系统故障也能够保持。
+
+由于行锁支持事务，因此并发事务处理就会随之带来问题。
+
+
+**更新丢失(Lost Update)**
+
+当两个或多个事务选择同一行，然后基于最初选定的值更新该行时，由于每个事务都不知道其他事务的存在，就会发生丢失更新问题－－最后的更新覆盖了由其他事务所做的更新。
+
+例如，两个程序员修改同一java文件。每程序员独立地更改其副本，然后保存更改后的副本，这样就覆盖了原始文档。最后保存其更改副本的编辑人员覆盖前一个程序员所做的更改。
+
+如果在一个程序员完成并提交事务之前，另一个程序员不能访问同一文件，则可避免此问题。
+
+
+
+**脏读(Dirty Reads)**
+
+一个事务正在对一条记录做修改，在这个事务完成并提交前，这条记录的数据就处于不一致状态；这时，另一个事务也来读取同一条记录，如果不加控制，第二个事务读取了这些“脏”数据，并据此做进一步的处理，就会产生未提交的数据依赖关系。这种现象被形象地叫做”脏读”。
+
+一句话：事务A读取到了事务B已修改但尚未提交的的数据，还在这个数据基础上做了操作。此时，如果B事务回滚，A读取的数据无效，不符合一致性要求。
+
+
+
+**不可重复读(Non-Repeatable Reads)**
+
+在一个事务内，多次读同一个数据。在这个事务还没有结束时，另一个事务也访问该同一数据。那么，在第一个事务的两次读数据之间。由于第二个事务的修改，那么第一个事务读到的数据可能不一样，这样就发生了在一个事务内两次读到的数据是不一样的，因此称为不可重复读，即原始读取不可重复。
+
+一句话：一个事务范围内两个相同的查询却返回了不同数据。
+
+
+
+**幻读(Phantom Reads)**
+
+一个事务按相同的查询条件重新读取以前检索过的数据，却发现其他事务插入了满足其查询条件的新数据，这种现象就称为“幻读”。
+
+一句话：事务A 读取到了事务 B 提交的新增数据，不符合隔离性。
+
+
+
+> 脏读是读到了别人修改未提交的数据（可能随时回滚），
+>
+> 幻读是读到了其他线程新增的数据
+
+
+
+## 9.5 事务隔离级别
+
+“脏读”、“不可重复读”和“幻读”，其实都是数据库读一致性问题，必须由数据库提供一定的事务隔离机制来解决。
+
+| 隔离级别 | 读数据一致性                             | 脏读 | 不可重复读 | 幻读 |
+| -------- | ---------------------------------------- | ---- | ---------- | ---- |
+| 未提交读 | 最低级别，只能保证不读取物理上损坏的数据 | 是   | 是         | 是   |
+| 已提交读 | 语句级                                   | 否   | 是         | 是   |
+| 可重复读 | 事务级                                   | 否   | 否         | 是   |
+| 可序列化 | 最高级别，事务级                         | 否   | 否         | 否   |
+
+数据库的事务隔离越严格，并发副作用越小，但付出的代价也就越大，因为事务隔离实质上就是使事务在一定程度上 “串行化”进行，这显然与“并发”是矛盾的。同时，不同的应用对读一致性和事务隔离程度的要求也是不同的，比如许多应用对“不可重复读”和“幻读”并不敏感，可能更关心数据并发访问的能力。
+
+查看当前数据库的事务隔离级别：
+
+```sql
+show variables like 'tx_isolation';
+```
+
+> **mysql** **默认是可重复读 RR（** **实现原理（MVCC [ 多版本并发控制 ]）**
+
+
+
+**MVCC扩展：**
+
+InnoDB 在每行记录后面保存两个隐藏的列来，分别保存了这个行的创建时间和行的更新时间。这里存储的并不是实际的时间值, 而是系统版本号，当数据被修改时，版本号加1。
+
+在读取事务开始时，系统会给当前读事务一个版本号，事务会读取版本号<=当前版本号的数据。
+
+此时如果其他写事务修改了这条数据，那么这条数据的版本号就会加1，从而比当前读事务的版本号高，读事务自然而然的就读不到更新后的数据了。
+
+
+
+**注意**：在mysql中，提供了两种事务隔离技术，第一个是 mvcc，第二个是 next-key 技术。这个在使用不同的语句的时候可以动态选择。不加 lock in share mode 之类的就使用 mvcc。否则使用 next-key。mvcc 的优势是不加锁，并发性高。缺点是不是实时数据。next-key 的优势是获取实时数据，但是需要加锁。
+
+
+
+在RR级别下，**快照读**是通过MVVC(多版本控制)和undo log来实现的，**当前读**是通过加record lock(记录锁)和gap lock(间隙锁)来实现的。
+
+以从上面的显示来看，如果需要实时显示数据，还是需要通过加锁来实现。这个时候会使用next-key技术来实现。
+
+**快照读**：
+
+​      简单的select操作。
+
+**当前读** 
+
+​      select ... lock in share mode
+
+​      select ... for update
+
+​      insert
+
+​      update
+
+​      delete
+
+
+
+## 9.6 间隙锁
+
+**什么是间隙锁?**
+
+当我们用范围条件而不是等值条件检索数据，并请求共享或排他锁时，InnoDB 会给符合条件的已有数据记录的索引项加锁；对于键值在条件范围内但并不存在的记录，叫做“间隙（GAP)”，InnoDB 也会对这个“间隙”加锁，这种锁机制就是所谓的间隙锁（GAP Lock）。
+
+**间隙锁的危害？**
+因为 Query 执行过程中通过范围查找的话，他会锁定整个范围内所有的索引键值，即使这个键值并不存在。间隙锁有一个比较致命的弱点，就是当锁定一个范围键值之后，即使某些不存在的键值也会被无辜的锁定，而造成在锁定的时候无法插入锁定键值范围内的任何数据。在某些场景下这可能会对性能造成很大的危害。
+
+
+
+## 9.7 读锁(共享锁）
+
+共享锁又称读锁，是读取操作创建的锁。其他用户可以并发读取数据，但任何事务都不能对数据进行修改（获取数据上的排他锁），直到已释放所有共享锁。
+
+如果事务 T 对数据 A 加上共享锁后，则其他事务只能对 A 再加共享锁，不能加排他锁。获取到共享锁的事务只能读数据，不能修改数据。
+
+用法：
+
+```sql
+SELECT ... LOCK IN SHARE MODE;
+```
+
+在查询语句后面增加 `LOCK IN SHARE MODE` ，Mysql 会对查询结果中的每行都加共享锁***，***当没有其他线程对查询结果集中的任何一行使用排他锁时，可以成功申请共享锁，否则会被阻塞。其他线程也可以读取使用了共享锁的行，而且这些线程读取的是同一个版本的数据。
+
+
+
+## 9.8 写锁(排他锁)
+
+排他锁又称写锁，如果事务 T 对数据 A 加上排他锁后，则其他事务不能再对 A 加任任何类型的锁。获取到排他锁的事务既能读数据，又能修改数据。
+
+用法：
+
+```sql
+SELECT ... FOR UPDATE;
+```
+
+在查询语句后面增加 `FOR UPDATE` ，Mysql 会对查询结果中的每行都加排他锁，当没有其他线程对查询结果集中的任何一行使用排他锁时，可以成功申请排他锁，否则会被阻塞。
+
+
+
+## 9.9 行锁分析
+
+如何分析行锁定?
+
+通过检查 InnoDB_row_lock 状态变量来分析系统上的行锁的争夺情况：
+
+```sql
+show status like 'innodb_row_lock%';
+```
+
+对各个状态量的说明如下：
+
+* `Innodb_row_lock_current_waits`：当前正在等待锁定的数量；
+* `Innodb_row_lock_time`：从系统启动到现在锁定总时间长度；
+* `Innodb_row_lock_time_avg`：每次等待所花平均时间；
+* `Innodb_row_lock_time_max`：从系统启动到现在等待最常的一次所花的时间；
+* `Innodb_row_lock_waits`：系统启动后到现在总共等待的次数；
+
+对于这5个状态变量，比较重要的主要是:
+
+* `Innodb_row_lock_time_avg`（等待平均时长），
+
+* `Innodb_row_lock_waits`（等待总次数）
+
+* `Innodb_row_lock_time`（等待总时长）这三项。
+
+
+
+尤其是当等待次数很高，而且每次等待时长也不小的时候，我们就需要分析系统中为什么会有如此多的等待，然后根据分析结果着手指定优化计划。
+
+最后可以通过 `SELECT * FROM information_schema.INNODB_TRX\G;` 来查询正在被锁阻塞的 sql 语句。
+
+**优化建议**:
+
+* 尽可能让所有数据检索都通过索引来完成，避免无索引行锁升级为表锁。
+* 尽可能较少检索条件，避免间隙锁
+* 尽量控制事务大小，减少锁定资源量和时间长度
+* 锁住某行后，尽量不要去调别的行或表，赶紧处理被锁住的行然后释放掉锁。
+* 涉及相同表的事务，对于调用表的顺序尽量保持一致。
+* 在业务环境允许的情况下,尽可能低级别事务隔离
+
+
+
+## 9.10 页锁
+
+开销和加锁时间界于表锁和行锁之间；会出现死锁；锁定粒度界于表锁和行锁之间，并发度一般。
+
+
+
+# 10. 主从复制
+
+**主从复制的基本原理**
+
+![image-20241011005619687](https://cdn.jsdelivr.net/gh/jlukey/image@main/img/image-20241011005619687.png)
+
+MySQL复制过程分成三步:
+
+1. master将改变记录到二进制日志(binary log)。这些记录过程叫做二进制日志事件，binary log events。
+
+2. slave 将 master 的 binary log events 拷贝到它的中继日志(relay log)。
+3. slave重做中继日志中的事件，将改变应用到自己的数据库中。 MySQL复制是异步的且串行化的。
+
+
+
+**复制的基本原则**
+
+- 每个slave只有一个master。
+- 每个slave只能有一个唯一的服务器ID。
+
+- 每个master可以有多个slave。
