@@ -30,7 +30,7 @@ try{
 3. 为什么要用lock代替synchronized？  
 lock可以定义多个condition（可以理解为一把锁有多个钥匙），精准通知，精准唤醒。
 
-通过设置多个condition精确通知需要唤醒的线程，可以指定线程顺序调用。
+>  通过设置多个condition精确通知需要唤醒的线程，可以指定线程顺序调用。
 
 
 
@@ -367,28 +367,24 @@ class Phone7{
 
 **8锁小结**
 
-1、new this 调用的这个对象，是一个具体的对象！
+1. new this 调用的这个对象，是一个具体的对象！
 
-2、static class 唯一的一个模板！
+2. static class 唯一的一个模板！
 
 在我们编写多线程程序得时候，只需要搞明白这个到底锁的是什么就不会出错了！
 
-
-
+```java
 synchronized(Demo.class){
-
 }//等同于static synchronized 方法
 
-
-
 synchronized(this){
-
 }//等同于synchronized普通方法
+```
 
 
 
 # 3. List不安全
-## 举例说明list线程不安全  
+## 3.1 举例说明list线程不安全  
 <font style="color:#F5222D;">注意：ArrayList不是为并发情况而设计的集合类</font>
 
 举例：多个线程操作ArraList，边写边读，会出现<font style="color:#F5222D;">并发修改异常</font>.
@@ -403,18 +399,26 @@ java.util.**<font style="color:#F5222D;">ConcurrentModificationException </font>
 
 **解决方法**：
 
-1） List<String> list = new Vector<>();  // vector 线程安全，add方法有synchronized，读写性能低,同一时间段只能一个人读/写.
+```java
+1)  List<String> list = new Vector<>();  // vector 线程安全，add方法有synchronized，读写性能低,同一时间段只能一个人读/写.
 
-2）List<String> list = Collections.synchronizedList(new ArrayList<>()); // Collections工具类提供，将ArrayList转换为线程安全.
+2)  List<String> list = Collections.synchronizedList(new ArrayList<>()); // Collections工具类提供，将ArrayList转换为线程安全.
 
-3）List<String> list = new CopyOnWriteArrayList();  // JUC包提供的 写时复制(读写分离思想).
+3)  List<String> list = new CopyOnWriteArrayList();  // JUC包提供的 写时复制(读写分离思想).
+```
 
-## CopyOnWriteArrayList浅析
+
+
+## 3.2 CopyOnWriteArrayList浅析
+
 <font style="color:#000000;">和ArrayList一样，其底层数据结构也是数组，加上transient不让其被序列化，加上volatile修饰来保证多线程下的其可见性和有序性。</font>
 
 <font style="color:#000000;">其修改操作是基于fail-safe机制，像我们的String一样，不在原来的对象上直接进行操作，而是复制一份对其进行修改，另外此处的修改操作是利用Lock锁进行上锁的，所以保证了线程安全问题。</font>
 
-## CopyOnWriteArrayList的几个要点
+
+
+## 3.3 CopyOnWriteArrayList的几个要点
+
 + 实现了List接口
 + 内部持有一个ReentrantLock lock = new ReentrantLock();
 + 底层是用<font style="color:#FF0000;">volatile</font> <font style="color:#FF0000;">transient</font>声明的数组 array
@@ -424,27 +428,39 @@ java.util.**<font style="color:#F5222D;">ConcurrentModificationException </font>
 
 **transient （**<font style="color:#333333;">暂短的、临时的</font>**）**<font style="color:#333333;">：修饰符，只能用来修饰字段。在对象序列化的过程中，标记为transient的变量不会被序列化。</font>
 
-## CopyOnWrite的缺点　
+
+
+## 3.4 CopyOnWrite的缺点　
+
 CopyOnWrite容器有很多优点，但是同时也存在两个问题，即内存占用问题和数据一致性问题。所以在开发的时候需要注意一下。
 
-**　　内存占用问题**。因为CopyOnWrite的写时复制机制，所以在进行写操作的时候，内存里会同时驻扎两个对象的内存，旧的对象和新写入的对象（注意:在复制的时候只是复制容器里的引用，只是在写的时候会创建新对象添加到新容器里，而旧容器的对象还在使用，所以有两份对象内存）。如果这些对象占用的内存比较大，比如说200M左右，那么再写入100M数据进去，内存就会占用300M，那么这个时候很有可能造成频繁的Yong GC和Full GC。之前我们系统中使用了一个服务由于每晚使用CopyOnWrite机制更新大对象，造成了每晚15秒的Full GC，应用响应时间也随之变长。
+* **内存占用问题**。因为CopyOnWrite的写时复制机制，所以在进行写操作的时候，内存里会同时驻扎两个对象的内存，旧的对象和新写入的对象（注意:在复制的时候只是复制容器里的引用，只是在写的时候会创建新对象添加到新容器里，而旧容器的对象还在使用，所以有两份对象内存）。如果这些对象占用的内存比较大，比如说200M左右，那么再写入100M数据进去，内存就会占用300M，那么这个时候很有可能造成频繁的Yong GC和Full GC。之前我们系统中使用了一个服务由于每晚使用CopyOnWrite机制更新大对象，造成了每晚15秒的Full GC，应用响应时间也随之变长。
 
-　　针对内存占用问题，可以通过压缩容器中的元素的方法来减少大对象的内存消耗，比如，如果元素全是10进制的数字，可以考虑把它压缩成36进制或64进制。或者不使用CopyOnWrite容器，而使用其他的并发容器，如ConcurrentHashMap。
+  针对内存占用问题，可以通过压缩容器中的元素的方法来减少大对象的内存消耗，比如，如果元素全是10进制的数字，可以考虑把它压缩成36进制或64进制。或者不使用CopyOnWrite容器，而使用其他的并发容器，如ConcurrentHashMap。
 
-**　　数据一致性问题**。CopyOnWrite容器只能保证数据的最终一致性，不能保证数据的实时一致性。所以如果你希望写入的的数据，马上能读到，请不要使用CopyOnWrite容器。
+* **数据一致性问题**。CopyOnWrite容器只能保证数据的最终一致性，不能保证数据的实时一致性。所以如果你希望写入的的数据，马上能读到，请不要使用CopyOnWrite容器。
 
-## CopyOnWriteArrayList为什么并发安全且性能比Vector好
-**　**我们知道Vector是增删改查方法都加了synchronized，保证同步，但是每个方法执行的时候都要去获得锁，性能就会大大下降，而CopyOnWriteArrayList 只是在增删改上加锁，但是读不加锁，在读方面的性能就好于Vector，CopyOnWriteArrayList支持读多写少的并发情况。
+
+
+## 3.5 CopyOnWriteArrayList为什么并发安全且性能比Vector好
+
+我们知道Vector是增删改查方法都加了synchronized，保证同步，但是每个方法执行的时候都要去获得锁，性能就会大大下降，而CopyOnWriteArrayList 只是在增删改上加锁，但是读不加锁，在读方面的性能就好于Vector，CopyOnWriteArrayList支持读多写少的并发情况。
 
 # 4. Set 不安全
 HashSet底层数据结构是HashMap。 hashSet的add方法底层调用的就是hashMap的put方法，为什么hashMap的put是2个参数，而hashSet的add是一个参数呢，因为add进去的一个值就是put的key，value永远是一个Object类型的常量: PRSENT，固定写死的。
 
-Set<String> set =  new CopyOnWriteArraySet();  // new HashSet<>();  Collections.synchronizedArraySet(new HashSet());
+```java
+Set<String> set =  new CopyOnWriteArraySet();  
+// new HashSet<>(); Collections.synchronizedArraySet(new HashSet());
+```
 
 
 
 # 5. Map 不安全
-Map<String,Object> map = new ConCurrentHashMap<>();   // new HashMap<>();  Collections.synchronizedMap();
+```java
+Map<String,Object> map = new ConCurrentHashMap<>();   
+// new HashMap<>();  Collections.synchronizedMap();
+```
 
 
 
@@ -489,7 +505,7 @@ class MyThread implements Callable<Integer>{
 // >>> 1024
 ```
 
-执行流程
+**执行流程**
 
 1. `main` 方法启动后，创建一个 `FutureTask` 对象，包装 `MyThread` 实例。
 2. 启动一个新线程 `A`，执行 `futureTask` 中的任务。
@@ -514,7 +530,7 @@ _**<font style="color:#F5222D;background-color:#FCFCCA;">并发线程栅栏：Cy
 
 ## 7.1 CountDownLatch概念
 
-CountDownLatch又名**<font style="color:#F5222D;">倒计时计算器</font>**，它是一个同步工具类，用来协调多个线程之间的同步，或者说起到线程之间的通信（而不是用作互斥的作用）。
+CountDownLatch又名<font style="color:#F5222D;">**倒计时计算器**</font>，它是一个同步工具类，用来协调多个线程之间的同步，或者说起到线程之间的通信（而不是用作互斥的作用）。
 
 CountDownLatch能够使一个线程在等待另外一些线程完成各自工作之后，再继续执行。使用一个计数器进行实现。计数器初始值为线程的数量。当每一个线程完成自己任务后，计数器的值就会减一。当计数器的值为0时，表示所有的线程都已经完成一些任务，然后在CountDownLatch上等待的线程就可以恢复执行接下来的任务。
 
@@ -552,11 +568,13 @@ CountDownLatch是一次性的，计算器的值只能在构造方法中初始化
 
 使当前线程在锁存器倒计数至零之前一直等待，除非线程被中断或超出了指定的等待时间。如果当前计数为零，则此方法立刻返回true值。
 
-　　如果当前计数大于零，则出于线程调度目的，将禁用当前线程，且在发生以下三种情况之一前，该线程将一直出于休眠状态：
+如果当前计数大于零，则出于线程调度目的，将禁用当前线程，且在发生以下三种情况之一前，该线程将一直出于休眠状态：
 
 1. 如果计数到达零，则该方法返回true值。
 2. 如果当前线程，在进入此方法时已经设置了该线程的中断状态；或者在等待时被中断，则抛出InterruptedException，并且清除当前线程的已中断状态。
 3. 如果超出了指定的等待时间，则返回值为false。如果该时间小于等于零，则该方法根本不会等待。
+
+
 
 **参数**：
 
@@ -568,7 +586,7 @@ CountDownLatch是一次性的，计算器的值只能在构造方法中初始化
 
 　　如果计数到达零，则返回true；如果在计数到达零之前超过了等待时间，则返回false
 
-**抛****出**：
+**抛出**：
 
 　　InterruptedException-如果当前线程在等待时被中断
 
@@ -618,11 +636,11 @@ CountDownLatch是一次性的，计算器的值只能在构造方法中初始化
 
 <font style="color:#121212;"></font>
 
-读-读  不互斥
+* 读-读  不互斥
 
-读-写  互斥
+* 读-写  互斥
 
-写-写  互斥
+* 写-写  互斥
 
 <font style="color:#404040;"></font>
 
@@ -678,7 +696,7 @@ BlockingQueue即阻塞队列，它是基于ReentrantLock.
 
 线程池就是首先创建一些线程，它们的集合称为线程池。使用线程池可以很好地提高性能，线程池在系统启动时即创建大量空闲的线程，程序将一个任务传给线程池，线程池就会启动一条线程来执行这个任务，执行结束以后，该线程并不会死亡，而是再次返回线程池中成为空闲状态，等待执行下一个任务。它的<font style="color:#F5222D;">主要特点</font>为：**<u>线程复用、控制最大并发数、管理线程</u>**。
 
-------
+
 
 **线程池的工作机制：**
 
@@ -686,17 +704,15 @@ BlockingQueue即阻塞队列，它是基于ReentrantLock.
 
 一个线程同时只能执行一个任务，但可以同时向一个线程池提交多个任务。
 
-------
+
 
 **使用线程池的原因**
 
 多线程运行时，系统不断的启动和关闭新线程，成本非常高，会过渡消耗系统资源，以及过度切换线程的危险，从而可能导致系统资源的崩溃。这时，线程池就是最好的选择了。
 
-<font style="color:#F5222D;">1）降低资源消耗。重复利用已创建好的线程。</font>
-
-<font style="color:#F5222D;">2）提高响应速度。不需要等待线程创建。</font>
-
-<font style="color:#F5222D;">3）提高线程的管理性。统一分配、调优，监控。</font>
+1. <font style="color:#F5222D;">降低资源消耗。重复利用已创建好的线程。</font>
+2. <font style="color:#F5222D;">提高响应速度。不需要等待线程创建。</font>
+3. <font style="color:#F5222D;">提高线程的管理性。统一分配、调优，监控。</font>
 
 
 
@@ -745,9 +761,13 @@ ExecutorService threadPool = Executors.newCachedThreadPool();
 
 ![](https://cdn.nlark.com/yuque/0/2021/png/12493416/1612795132689-cd941417-a894-4769-8241-f096bf076365.png)
 
-**接着再点进这this，我们可以看到它有七个参数：**
+
+
+接着再点进这this，我们可以看到它有七个参数：
 
 ![](https://cdn.nlark.com/yuque/0/2021/png/12493416/1612795206859-df21d5a6-a3da-4f22-9203-6b3e6b204a0d.png)
+
+<br/>
 
 ## 10.4 threadPoolExecutor七大参数
 
@@ -761,7 +781,7 @@ ExecutorService threadPool = Executors.newCachedThreadPool();
 6. **`threadFactory`**：表示生成线程池中工作线程的线程工厂，用于创建线程，一般默认的即可。
 7. **`handler`**：拒绝策略，表示当队列满了，并且工作线程大于等于线程池的最大线程数（maximumPoolSize）时如何来拒绝请求执行的 runnable 的策略。
 
-
+<br/>
 
 通俗理解为：<font style="color:#4D4D4D;">线程池相当于一家银行，窗口相当于线程</font>，<font style="color:#4D4D4D;">银行有最多有 5 个受理窗口，但是常用的却只有 2 个，而候客区就相当于我们的阻塞队列（</font>**BlockingQueue**<font style="color:#4D4D4D;">），那当我们的阻塞队列满了之后，</font>**handle** <font style="color:#4D4D4D;">拒绝策略出来了，相当于银行门口立了块牌子，上面写着不办理业务了！然后当客户都办理的差不多了，此时多出来 (在 corePool 的基础上扩容的窗口) 的窗口在经过</font> **keepAliveTime** <font style="color:#4D4D4D;">的时间后就关闭了，重新恢复到</font> **corePool** 个受理窗口。</font>
 
@@ -887,7 +907,7 @@ System.out.println(Runtime.getRuntime().availableProcessors()); //8核
 
 
 
-示例1,匿名内部类写法:
+**示例1:  匿名内部类写法**
 
 ![](https://cdn.nlark.com/yuque/0/2021/png/12493416/1612970123593-27b0d2e0-996d-41c2-8df6-680bd0dc1341.png)
 
@@ -895,7 +915,7 @@ System.out.println(Runtime.getRuntime().availableProcessors()); //8核
 
 
 
-示例2：lambda写法：
+**示例2：lambda写法**
 
 ![](https://cdn.nlark.com/yuque/0/2021/png/12493416/1612970245129-343d49b0-fcd2-40e2-acf6-c66bb243117f.png)
 
@@ -909,7 +929,7 @@ System.out.println(Runtime.getRuntime().availableProcessors()); //8核
 
 
 
-示例1,匿名内部类写法:
+**示例1: 匿名内部类写法**
 
     ![](https://cdn.nlark.com/yuque/0/2021/png/12493416/1612971611523-ba8bd9b2-4dcb-4362-b15d-13a8acb3545e.png)![](https://cdn.nlark.com/yuque/0/2021/png/12493416/1612970868969-a1197dd6-155a-4c54-84e4-d344fa4cee26.png)
 
@@ -917,7 +937,7 @@ System.out.println(Runtime.getRuntime().availableProcessors()); //8核
 
 
 
-示例2：lambda写法：
+**示例2：lambda写法**
 
     ![](https://cdn.nlark.com/yuque/0/2021/png/12493416/1612970918079-33d7ba6d-8d85-48d7-8dae-1c8b748f8828.png)
 
@@ -931,7 +951,7 @@ System.out.println(Runtime.getRuntime().availableProcessors()); //8核
 
 
 
-示例1,匿名内部类写法:
+**示例1: 匿名内部类写法**
 
    ![](https://cdn.nlark.com/yuque/0/2021/png/12493416/1612971347458-1ae1156c-3c1d-4861-88e5-f96240dca6f3.png)
 
@@ -939,7 +959,7 @@ System.out.println(Runtime.getRuntime().availableProcessors()); //8核
 
 
 
-示例2：lambda写法：
+**示例2：lambda写法**
 
   ![](https://cdn.nlark.com/yuque/0/2021/png/12493416/1612971427921-5e45cc0d-4ec4-4377-af81-367407f3b6a1.png)
 
@@ -955,7 +975,7 @@ System.out.println(Runtime.getRuntime().availableProcessors()); //8核
 
 
 
-示例1,匿名内部类写法:
+**示例1: 匿名内部类写法**
 
     ![](https://cdn.nlark.com/yuque/0/2021/png/12493416/1612971040942-0c3fcdb3-0823-4882-9214-ab2bfdfb99be.png)
 
@@ -965,7 +985,7 @@ System.out.println(Runtime.getRuntime().availableProcessors()); //8核
 
 
 
-示例2：lambda写法：
+**示例2：lambda写法**
 
 ![](https://cdn.nlark.com/yuque/0/2021/png/12493416/1612971180417-8057df8f-2450-447b-a6e0-bce702a45cf6.png)
 
@@ -987,7 +1007,7 @@ ReentrantLock 内部包含了一个 AQS 对象。
 
 ![](https://cdn.nlark.com/yuque/0/2021/png/12493416/1619586759459-7b892e8d-a012-40cd-bf50-9a2d9fb12d55.png)
 
-<font style="color:#505050;">AQS 定义两种资源共享方式：</font>
+<font style="color:#505050;">**AQS 定义两种资源共享方式：**</font>
 
 + **<font style="color:#505050;">Exclusive</font>**<font style="color:#505050;">（</font>**<font style="color:#505050;">独占</font>**<font style="color:#505050;">，在特定时间内，只有一个线程能够执行，如ReentrantLock）</font>
 + **<font style="color:#505050;">Share</font>**<font style="color:#505050;">（</font>**<font style="color:#505050;">共享</font>**<font style="color:#505050;">，多个线程可以同时执行，如ReadLock、Semaphore、CountDownLatch）</font>
@@ -1051,8 +1071,6 @@ ReentrantLock 内部包含了一个 AQS 对象。
 <font style="color:#4D4D4D;"></font>
 
 <font style="color:#4D4D4D;">公平锁与非公平锁的含义都很明白，</font>`公平锁必须排队获取锁，锁的获取顺序完全根据排队顺序而来，而非公平就是谁抢到是谁的`<font style="color:#4D4D4D;">。</font>但是！同步队列不是 FIFO 的吗，它们入队排好顺序并且按照顺序一个一个的醒来，只有醒来的才有机会去获取锁，才能去执行 try 方法，这不还是公平的吗？
-
-
 
 **解答：**
 
