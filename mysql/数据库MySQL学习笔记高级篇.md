@@ -1208,6 +1208,3 @@ MySQL复制过程分成三步:
 - 每个slave只能有一个唯一的服务器ID。
 
 - 每个master可以有多个slave。
-- 
-- 
-  <font style="color:#325db1;">Java8则只将永久代变成了元空间</font>
