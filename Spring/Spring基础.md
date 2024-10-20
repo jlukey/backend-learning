@@ -221,13 +221,13 @@ AOP代码实现参考资料：[https://www.cnblogs.com/hublogs/p/12035415.html](
 
 
 
-## 5. Spring的事务实现原理是什么？事务传播机制
-### 事务的实现原理
+## 5. Spring事务
+### 5.1 事务的实现原理
 如果你在方法上加了@Teansactional注解，此时Spring会使用AOP的思想，**<font style="color:#F5222D;background-color:#FCFCCA;">在你的方法执行之前，先去开启事务。执行完毕之后根据你的方法是否报错，来决定回滚还是提交这个事务。</font>**
 
 ![](https://cdn.nlark.com/yuque/0/2021/png/12493416/1618214942777-d14ac6b6-d7e7-4400-bde9-1972c5ac4dc6.png)
 
-### 事务的传播机制
+### 5.2 事务的传播机制
 + **<font style="color:#F5222D;">required</font>**<font style="color:#F5222D;">：</font>若当前存在事务，则加入该事务，若不存在事务，则新建一个事务。<font style="color:#F5222D;background-color:#FADB14;">Spring默认此级别！</font>
 + **<font style="color:#F5222D;">requires_new</font>**：<font style="color:#4D4D4D;">若当前没有事务，则新建一个事务。若当前存在事务，则新建一个事务，新老事务相互独立。</font><font style="color:#F5222D;">外部事务回滚不会影响内部事务的正常提交</font><font style="color:#4D4D4D;">。</font>
 + **<font style="color:#F5222D;">nested</font>**：<font style="color:#4D4D4D;">如果当前存在事务，则嵌套在当前事务中执行。如果当前没有事务，则新建一个事务。</font><font style="color:#F5222D;">外部事务回滚会带着内部事务一起回滚。</font>
@@ -245,7 +245,7 @@ AOP代码实现参考资料：[https://www.cnblogs.com/hublogs/p/12035415.html](
 
 
 
-### 事务隔离级别
+### 5.3 事务隔离级别
 spring 有五大隔离级别，默认值为 ISOLATION_DEFAULT（使用数据库的设置），其他四个隔离级 别和数据库的隔离级别一致。
 
 + **ISOLATION_DEFAULT**：用底层数据库的设置隔离级别，数据库设置的是什么我就用什么。
@@ -256,7 +256,415 @@ spring 有五大隔离级别，默认值为 ISOLATION_DEFAULT（使用数据库�
 
 
 
-### 事务在什么场景下失效
+### 5.4 事务在什么场景下失效
+
+![img](https://cdn.jsdelivr.net/gh/jlukey/image@main/img/71531fbb14102c7cc6d9ec1d8b0c24ac.png)
+
+**1. 访问权限问题**
+
+> 所谓的访问权限问题也就是开发中再熟悉不过的`private`，`default`，`protected`，`public`，它们的访问权限从左到右，依次变大。如果我们在开发过程中国呢，把某些事务方法定义了错误的访问权限，就会导致事务功能出现问题，甚至失效。例如：
+
+代码语言：javascript
+
+复制
+
+```java
+@Service
+public class UserService {
+ @Transactionsl
+ private void add(User user){
+  saveUser(user);
+  updateUser(user);
+ }
+}
+```
+
+上面代码中我们可以看到对于方法`add`的访问修饰符被定义成了`private`，这样会导致事务失效，原因是：`Spring 要求被代理的方法必须是 **public** 的`。
+
+> 如果我们自定义的事务方法(即目标方法)它的访问权限不是`public`，而是`private`，`defalut`，`protected`修饰符的话，Spring都不会提供事务。
+
+
+
+**2. 方法使用final修饰**
+
+在某些场景我们可能需要使用 `final` 修饰方法，为了不让子类重写等原因，针对普通方法而言这是没有任何问题的，但是针对需要加事务的方法则会导致事务失效。如下代码：
+
+```java
+@Service
+public class UserService {
+ @Transactionsl
+ private final void add(User user){
+  saveUser(user);
+  updateUser(user);
+ }
+}
+```
+
+上述代码中的`add`方法被`final`修饰了，从而导致了事务失效。具体原因是什么的。这就要从Spring的源码开始说起了。相比应该是都知道Spring事务的底层其实是使用了AOP，也就是通过`jdk动态代理`或者`cglib`，帮我们生成了代理类，在代理类中实现的事务功能。
+
+但是某个方法被`final`修饰了，那么在它的代理类中，就无法重写该方法，而添加事务功能.
+
+> 注意：如果某个方法是 `static` 修饰的，同样无法通过动态代理，变成事务方法。
+
+
+
+**3. 方法内部调用**
+
+在某些场景下，我们需要在某个 service 类中的某个方法中调用另外一个事务方法。比如：
+
+```java
+@Service
+public class UserService {
+ @Autowired
+ private UserMapper usermapper;
+
+ public void add(User user){
+  userMappper.insertUser(user);
+  updateStatus(user);
+ }
+}
+
+@Transactional
+public void updateStatus(User user){
+ doSomeThing();
+}
+```
+
+从上面的方法中我们可以看到 add() 方法中直接调用了事务方法 updateStatus()；因为 updateStatus() 方法拥有事务的能力是因为 Spring AOP 生成了代理对象，但是这种方法直接调用了 this 对象的方法，所以 updateStatus() 方法不会生成事务。
+
+由此可见，在同一类中的方法直接调用，会导致事务失效。
+
+那么我们如何解决在同一方法中调用自己类中的另外一个方法呢？方案如下：
+
+1. 新加一个Service方法, 将同一类中调用与被调用的两个方法拆分为两个Service。
+
+   ```java
+   @Service
+   public class ServiceA {
+    @Autowired
+    private ServiceB serviceB;
+   
+    public void save(User user){
+     queryData1();
+     queryData2();
+     serviceB.doSave(user);
+    }
+   }
+   ```
+
+   ```java
+   @Service
+   public class ServiceB{
+    @Transactional(rollbackFor = Exception.class)
+    public void doSave(User user) {
+     addData1(user);
+     updateData2(user):
+    }
+   }
+   ```
+
+2. 在该类中注入自己也可解决事务失效的问题。（这样不会导致循环依赖哦）。
+
+   ```java
+   @Service
+   public class ServiceA(){
+   
+    @Autowired
+    private ServiceA serviceA;
+   
+    public void save(User user){
+     queryData1();
+     queryData2();
+     serviceA.doSave(user);
+    }
+   
+    @Transactional(rollbackFor = Excetion.class)
+    public void doSave(User user){
+     addData1();
+     updateData2(user);
+    }
+   }
+   ```
+
+3. 通过AopContent类，在该Service类中使用`AopContent.currentProxy()`获取对象。
+
+   ```java
+   @Service
+   public class ServiceA{
+   
+    public void save(User user){
+     queryData1();
+     queryData2();
+     ( (ServiceA)AopContent.currentProxy() ).doSave(user);
+    }
+   
+   
+    @Transactional(rollbackFor = Excetion.class)
+    public void doSave(User user){
+     addData1(user);
+     updateData2(user);
+    }
+   }
+   ```
+
+
+
+**4. 未被 spring 管理**
+
+如果需要使用 Spring 事务，是有一个前置条件，那就是对象需要交给 Spring 进行管理，需要创建 bean 实例。通常情况下，我们通过`@Contrlller` 、`@Service`、 `@Component`、 `@Repository` 等注解，实现将 bean 实例化和依赖注入的功能。假设某个时候你再 Service 上没有添加 `@Service` 注解，比如:
+
+```java
+public class UserService{
+
+ @Transactional
+ public void add(User user){
+  saveData(user);
+  updateData(user);
+ }
+}
+```
+
+上述代码的 UserService 类没有添加 `@Service` 注解，那么该类就不会交给 Spring 进行统一管理，同时它的 add() 方法也不会生成事务。
+
+
+
+**5.多线程调用**
+
+在实际的应用开发中。我们通常使用多线程的场景还是很多的。如果Spring事务用在多线程场景下。同样会有问题。代码如下：
+
+```java
+@Slf4j
+@Service
+public class UserService{
+ @Autowired
+ private UserMapper userMapper;
+ @Autowired
+ private RoleService roleService;
+
+ @Transactional
+ public void add(User user) throws Exception{
+  userMapper.insertUser(user);
+  new Thread( ()-> {
+   roleService.doOtherThing();
+  }).start();
+ }
+}
+
+
+@Service
+public class RoleService{
+
+ @Transactional
+ public void doOtherThing(){
+  System.out.println("保存roles数据");
+ }
+
+}
+```
+
+从上面的例子，我们可以看到事务方法 add() 中，调用了事务方法 doOtherThing() ，但是事务方法 doOtherThing() 是在另外一个线程中调用的。这样会导致两个方法不在一个线程中。获取的数据库连接也就不一致，从而是两个不同的事务。如果 doOtherThing() 方法中抛出了异常， add() 方法是不可能回滚的。
+
+> Spring的事务是通过数据库的连接来实现的。当前线程中保存了一个map，key是数据源，value是数据库连接。
+>
+> `private static final ThreadLocal<Map<Object,Object>> resources = new NamedThreadLocal<>("Transactional resources");`
+>
+> 我们说的同一个事务，其实指同一个数据库连接，只有拥有同一个数据库连接才能同时提交和回滚。如果在不同的线程中，拿到的数据库连接肯定是不一样的。所以事务也是不同的。
+
+
+
+**6. 表不支持事务**
+
+众所周知，在 MySQL 5.x 之前，默认的数据库引擎是 `MYISAM`。它有一个致命的缺点，那就是不支持事务。在MySQL 5.x之后， `MYISAM` 已经逐渐的退出了历史舞台，取而代之的是引擎 `InnoDB` 。所以在实际的开发中如果事务没有生效，有可能就是因为你的表的引擎不支持事务。
+
+
+
+**7. 未开启事务**
+
+有些时候，事务没有生效的根本原因是没有开启事务。
+
+如果你使用的是 Spring Boot 项目，已经通过 `DataSoureTransactionManagerAutoConfiguration` 类，默认开启了事务，你只需要配置 `spring.datasource` 的相关参数即可。
+
+如果是 Spring 项目则需要手动配置事务。
+
+
+
+**8. 错误的传播特性**
+
+说到事务的传播特性，首先应该知道事务的传播特性有哪些：
+
+| 事务的传播行为类型        | 说明                                                         |
+| :------------------------ | :----------------------------------------------------------- |
+| PROPAGATION_REQUIRED      | 如果当前没有事务，就新建一个事务，如果已经存在一个事务，加入到这个事务中，这是最常见的选择。 |
+| PROPAGATION_SUPPORTS      | 支持当前事务，如果当前没有事务，则以非事务的方式运行         |
+| PROPAGATION_MANDATORY     | 使用当前事务，如果当前没有事务，就抛出异常                   |
+| PROPAGATION_REQUIRED_NEW  | 新建事务，如果当前存在事务，把当前事务挂起                   |
+| PROPAGATION_NOT_SUPPORTED | 以非事务的方式执行操作，如果当前存在事务，则把事务挂起       |
+| PROPAGATION_NEVER         | 以非事务的方式执行，如果当前存在事务，则抛出异常             |
+| PROPAGATION_NESTED        | 如果当前存在事务，则在嵌套事务内执行；如果当前没有事务，执行与PROPAGATION_REQUIRED类似的操作 |
+
+如果在编写代码时将事务的传播特性编写出错。比如：
+
+```java
+@Service
+public class UserService {
+
+ @Transactional(propagation = Propagation.NEVER)
+ public void doSave(User user){
+  saveData(user);
+  updateData(user);
+ }
+}
+```
+
+我们可以看到add方法的事务传播特性定义成了Propagation.NEVER，这种类型的传播特性不支持事务，如果有事务则会抛异常。
+
+>  目前只有三种事务传播特性才会新建事务 `REQUIRED` 、`REQUIRED_NEW`、 `NESTED`。
+
+
+
+**9. 自己吞了异常**
+
+在开发过程中，有可能我们在事务中使用了`try{} catch()`了异常。
+
+```java
+@Slf4j
+@Service
+public class UserService {
+
+ @Transactional
+ public void add(User user){
+  try{
+   saveData(user);
+   updateData(user);
+  } catch (Exception e){
+   log.error(e.getMessage(),e);
+  }
+ }
+
+}
+```
+
+按照上述代码编写的话，Spring 事务是不会回滚的，因为开发者自己捕获了异常，同时没有手动抛出。如果想要Spring能够正常回滚，则必须要抛出它能够处理的异常，如果没有抛出异常，Spring则会认为程序是正常的。
+
+
+
+**10. 手动抛出了别的异常**
+
+如果出现的异常不正确，Spring事务也不会回滚。
+
+```java
+@Slf4j
+@Service
+public class UserService{
+
+ @Transactional
+ public void add(User user) throws Exception {
+  try {
+   saveData(user);
+   updateData(user);
+  } catch(Exception e) {
+   log.error(e.getMessage(), e);
+   throw new Exception(e);
+  }
+ }
+
+}
+```
+
+例如上述代码中，开发人员自己捕获了异常，又手动抛出了异常：Exception，事务同样不会回滚。因为 Spring 事务，默认情况下只会回滚 `RunTimeException` ，和 `Error` (错误)，对于普通的 Exception (非运行时异常)，它是不会回滚的。
+
+
+
+**11. 自定义了回滚异常**
+
+在使用@Transactional注解声明事务时，有时我们想自定义回滚的异常，spring也是支持的。可以通过设置`rollbackFor`参数，来完成这个功能。但如果这个参数的值设置错了，就会引出一些莫名其妙的问题，例如：
+
+```java
+@Slf4j
+@Service
+public class UserService {
+    
+    @Transactional(rollbackFor = BusinessException.class)
+    public void add(User user) throws Exception {
+       saveData(user);
+       updateData(user);
+    }
+}
+```
+
+如果在执行上面这段代码，保存和更新数据时，程序报错了，抛了SqlException、DuplicateKeyException等异常。而BusinessException是我们自定义的异常，报错的异常不属于BusinessException，所以事务也不会回滚。
+
+即使 rollbackFor 有默认值，但阿里巴巴开发者规范中，还是要求开发者重新指定该参数。
+
+> `rollbackFor `默认值为 UncheckedException ，包括了 RuntimeException 和 Error . 当我们直接使用 `@Transactional `不指定 `rollbackFor` 时， Exception 及其子类都不会触发回滚。
+
+所以，建议一般情况下，将该参数设置成：Exception或Throwable。
+
+
+
+**12.  嵌套事务回滚多了**
+
+```java
+public class UserService {
+
+    @Autowired
+    private UserMapper userMapper;
+
+    @Autowired
+    private RoleService roleService;
+
+    @Transactional
+    public void add(UserModel user) throws Exception {
+        userMapper.insertUser(user);
+        roleService.doOtherThing();
+    }
+}
+
+@Service
+public class RoleService {
+
+    @Transactional(propagation = Propagation.NESTED)
+    public void doOtherThing() {
+        System.out.println("保存role表数据");
+    }
+}
+```
+
+这种情况使用了嵌套的内部事务，原本是希望调用roleService.doOtherThing()方法时，如果出现了异常，只回滚doOtherThing方法里的内容，不回滚 userMapper.insertUser里的内容，即回滚保存点。但事实是，insertUser也回滚了。
+
+这是为什么呢？
+
+> 因为doOtherThing()方法出现了异常，没有手动捕获，会继续往上抛，到外层add方法的代理方法中捕获了异常。所以，这种情况是直接回滚了整个事务，不只回滚单个保存点。
+
+如何才能只回滚保存点呢？
+
+```sql
+@Slf4j
+@Service
+public class UserService {
+
+    @Autowired
+    private UserMapper userMapper;
+
+    @Autowired
+    private RoleService roleService;
+
+    @Transactional
+    public void add(User user) throws Exception {
+
+        userMapper.insertUser(userModel);
+        try {
+            roleService.doOtherThing();
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+        }
+    }
+}
+```
+
+可以将内部嵌套事务放在try/catch中，并且不继续往上抛异常。这样就能保证，如果内部嵌套事务中出现异常，只回滚内部事务，而不影响外部事务。
+
+
 
 
 ## 6. Spring核心框架
