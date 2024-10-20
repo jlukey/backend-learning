@@ -2,7 +2,7 @@
 spring boot 核心的两个配置文件：
 
 - [x] **bootstrap** (.yml或者.properties)：boostrap由父ApplicationContext加载的，比applicaton优先加载，且 boostrap 里面的属性不能被覆盖； 
-- [x] **application **(.yml或者.properties)：用于 spring boot 项目的自动化配置。
+- [x] **application**(.yml或者.properties)：用于 spring boot 项目的自动化配置。
 
 
 
@@ -10,7 +10,7 @@ spring boot 核心的两个配置文件：
 @SpringBootApplication 
 
 + **@SpringBootConfiguration**:  组合了 @Configuration 注解，实现配置文件的功能。 
-+ **@****<font style="color:#F5222D;">EnableAutoConfiguration</font>**:  打开自动配置的功能，也可以关闭某个自动配置的选项。 
++ **<font style="color:#F5222D;">@EnableAutoConfiguration</font>**:  打开自动配置的功能，也可以关闭某个自动配置的选项。 
 + **@SpringBootApplication**(exclude = { DataSourceAutoConfiguration.class }) 
 + **@ComponentScan**:  Spring组件扫描
 
