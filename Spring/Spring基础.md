@@ -757,39 +757,36 @@ spring为解决单例的循环依赖问题，使用了三级缓存。bean的获�
 
 <font style="color:#4D4D4D;">Spring的</font><font style="color:#4D4D4D;">单例对象</font><font style="color:#4D4D4D;">的</font><font style="color:#4D4D4D;">初始化</font><font style="color:#4D4D4D;">主要分为三步：</font>
 
-<font style="color:#4D4D4D;">  
-</font>![](https://cdn.nlark.com/yuque/0/2021/png/12493416/1619604479955-4be5e0d3-ffa9-4f5d-ab7b-c15ac73a734e.png)
-
 ①：<font style="background-color:#FFFB8F;">createBeanInstance</font>：实例化，其实也就是 <font style="background-color:#FFFB8F;">调用对象的构造方法实例化对象</font>
 
 ②：<font style="background-color:#FFFB8F;">populateBean</font>：<font style="background-color:#FFFB8F;">填充属性</font>，这一步主要是多bean的<font style="background-color:#FFFB8F;">依赖属性</font>进行填充
 
 ③：<font style="background-color:#FFFB8F;">initializeBean</font>：<font style="background-color:#FFFB8F;">调用spring xml</font>中的<font style="background-color:#FFFB8F;">init()</font><font style="background-color:#FFFB8F;"> </font>方法。
 
-<font style="color:#8C8C8C;">从上面讲述的单例bean初始化步骤我们可以知道：</font><font style="color:#8C8C8C;">循环依赖主要发生在第一、第二步</font><font style="color:#8C8C8C;">。也就是</font><font style="color:#8C8C8C;background-color:#FFFB8F;">构造器循环依赖</font><font style="color:#8C8C8C;">和</font><font style="color:#8C8C8C;background-color:#FFFB8F;">field循环依赖。</font>
+从上面讲述的单例bean初始化步骤我们可以知道：循环依赖主要发生在第一、第二步。也就是<font style="background-color:#FFFB8F;">构造器循环依赖</font><font style="">和</font><font style="background-color:#FFFB8F;">field循环依赖。</font>
 
 <font style="color:#8C8C8C;background-color:#FFCC33;"></font>
 
-<font style="color:#4D4D4D;background-color:#FFFB8F;">调整配置文件</font><font style="color:#4D4D4D;background-color:#FFFB8F;">，将</font><font style="color:#4D4D4D;background-color:#FFFB8F;">构造函数注入</font><font style="color:#4D4D4D;background-color:#FFFB8F;">方式改为 </font><font style="color:#4D4D4D;background-color:#FFFB8F;">属性注入</font><font style="color:#4D4D4D;background-color:#FFFB8F;">方式 即可。</font><font style="color:#8C8C8C;"></font>
+<font style="background-color:#FFFB8F;">调整配置文件</font><font style="color:#4D4D4D;background-color:#FFFB8F;">，将</font><font style="background-color:#FFFB8F;">构造函数注入</font><font style="background-color:#FFFB8F;">方式改为 </font><font style="background-color:#FFFB8F;">属性注入</font><font style="color:#4D4D4D;background-color:#FFFB8F;">方式 即可。</font>
 
 <font style="color:#000000;"></font>
 
-A的某个field或者setter依赖了B的实例对象，同时B的某个field或者setter依赖了A的实例对象”这种循环依赖的情况。A首先完成了初始化的第一步，并且将自己提前曝光到singletonFactories中，此时进行初始化的第二步，发现自己依赖对象B，此时就尝试去get(B)，发现B还没有被create，所以走create流程，B在初始化第一步的时候发现自己依赖了对象A，于是尝试get(A)，尝试一级缓存singletonObjects(肯定没有，因为A还没初始化完全)，尝试二级缓存earlySingletonObjects（也没有），尝试三级缓存singletonFactories，由于A通过ObjectFactory将自己提前曝光了，所以B能够通过ObjectFactory.getObject拿到A对象(虽然A还没有初始化完全，但是总比没有好呀)，B拿到A对象后顺利完成了初始化阶段1、2、3，完全初始化之后将自己放入到一级缓存singletonObjects中。此时返回A中，A此时能拿到B的对象顺利完成自己的初始化阶段2、3，最终A也完成了初始化，进去了一级缓存singletonObjects中，而且更加幸运的是，由于B拿到了A的对象引用，所以B现在hold住的A对象完成了初始化。
+A的某个 field 或者 setter 依赖了 B 的实例对象，同时 B 的某个 field 或者 setter 依赖了 A 的实例对象”这种循环依赖的情况。A 首先完成了初始化的第一步，并且将自己提前曝光到 singletonFactories 中，此时进行初始化的第二步，发现自己依赖对象 B ，此时就尝试去 get(B) ，发现 B 还没有被 create ，所以走 create 流程， B 在初始化第一步的时候发现自己依赖了对象 A ，于是尝试 get(A) ，尝试一级缓存 singletonObjects 肯定没有，因为 A 还没初始化完全)，尝试二级缓存 earlySingletonObjects（也没有），尝试三级缓存 singletonFactories ，由于 A 通过 ObjectFactory 将自己提前曝光了，所以 B 能够通过 ObjectFactory.getObject 拿到 A 对象(虽然 A 还没有初始化完全，但是总比没有好呀)， B 拿到 A 对象后顺利完成了初始化阶段 1、2、3，完全初始化之后将自己放入到一级缓存 singletonObjects 中。此时返回 A 中， A 此时能拿到 B 的对象顺利完成自己的初始化阶段 2、3，最终 A 也完成了初始化，进去了一级缓存 singletonObjects 中，而且更加幸运的是，由于 B 拿到了 A 的对象引用，所以 B 现在 hold 住的 A 对象完成了初始化。
 
 
 
-<font style="color:#FA541C;background-color:transparent;">知道了这个原理时候，肯定就知道为啥Spring不能解决“A的构造方法中依赖了B的实例对象，同时B的构造方法中依赖了A的实例对象”这类问题了！因为加入singletonFactories三级缓存的前提是执行了构造器，所以构造器的循环依赖没法解决</font>
+<font style="color:#FA541C;background-color:transparent;">知道了这个原理时候，肯定就知道为啥 Spring 不能解决“ A 的构造方法中依赖了B 的实例对象，同时 B 的构造方法中依赖了 A 的实例对象”这类问题了！因为加入 singletonFactories 三级缓存的前提是执行了构造器，所以构造器的循环依赖没法解决</font>
 
 
 
 ## 9. Spring中都使用了哪些设计模式？
-> + **<font style="color:#000000;">工厂设计模式</font>**<font style="color:#000000;"> : Spring使用工厂模式通过 </font>`<font style="color:#000000;">BeanFactory</font>`<font style="color:#000000;">、</font>`<font style="color:#000000;">ApplicationContext</font>`<font style="color:#000000;"> 创建 bean 对象。</font>
+> + **<font style="color:#000000;">工厂设计模式</font>**<font style="color:#000000;"> : Spring使用工厂模式通过 </font><font style="color:#000000;">BeanFactory、</font><font style="color:#000000;">ApplicationContext</font><font style="color:#000000;">创建 bean 对象。</font>
 > + **<font style="color:#000000;">代理设计模式</font>**<font style="color:#000000;"> : Spring AOP 功能的实现。</font>
 > + **<font style="color:#000000;">单例设计模式</font>**<font style="color:#000000;"> : Spring 中的 Bean 默认都是单例的。</font>
-> + **<font style="color:#000000;">模板方法模式</font>**<font style="color:#000000;"> : Spring 中 </font>`<font style="color:#000000;">jdbcTemplate</font>`<font style="color:#000000;">、</font>`<font style="color:#000000;">hibernateTemplate</font>`<font style="color:#000000;"> 等以 Template 结尾的对数据库操作的类，它们就使用到了模板模式。</font>
+> + **<font style="color:#000000;">模板方法模式</font>**<font style="color:#000000;"> : Spring 中 </font><font style="color:#000000;">jdbcTemplate</font><font style="color:#000000;">、</font>`<font style="color:#000000;">hibernateTemplate</font><font style="color:#000000;"> 等以 Template 结尾的对数据库操作的类，它们就使用到了模板模式。</font>
 > + **<font style="color:#000000;">包装器设计模式</font>**<font style="color:#000000;"> : 我们的项目需要连接多个数据库，而且不同的客户在每次访问中根据需要会去访问不同的数据库。这种模式让我们可以根据客户的需求能够动态切换不同的数据源。</font>
 > + **<font style="color:#000000;">观察者模式:</font>**<font style="color:#000000;"> Spring 事件驱动模型就是观察者模式很经典的一个应用。</font>
-> + **<font style="color:#000000;">适配器模式</font>**<font style="color:#000000;"> :Spring AOP 的增强或通知(Advice)使用到了适配器模式、spring MVC 中也是用到了适配器模式适配</font>`<font style="color:#000000;">Controller</font>`<font style="color:#000000;">。</font>
+> + **<font style="color:#000000;">适配器模式</font>**<font style="color:#000000;"> :Spring AOP 的增强或通知(Advice)使用到了适配器模式、spring MVC 中也是用到了适配器模式适配</font><font style="color:#000000;">Controller</font><font style="color:#000000;">。</font>
 > + <font style="color:#000000;">……</font>
 >
 
@@ -802,7 +799,7 @@ A的某个field或者setter依赖了B的实例对象，同时B的某个field或�
 > 4. **<font style="color:#FA541C;">HandlAdapter</font>**<font style="color:#FA541C;">：处理器适配器。通过HandlerAdapter对处理器进行执行，这是适配器模式的应用，通过扩展适配器可以对更多类型的处理器进行执行。由框架实现。</font>
 > 5. **<font style="color:#FA541C;">ModelAndView：</font>**<font style="color:#FA541C;">是springmvc的封装对象，将model和view封装在一起。</font>
 > 6. **<font style="color:#FA541C;">ViewResolver</font>**<font style="color:#FA541C;">：视图解析器。ViewResolver负责将处理结果生成View视图，ViewResolver首先根据逻辑视图名解析成物理视图名即具体的页面地址，再生成View视图对象，最后对View进行渲染将处理结果通过页面展示给用户。</font>
-> 7. **<font style="color:#FA541C;">View</font>****<font style="color:#FA541C;">:  </font>**<font style="color:#FA541C;">是springmvc的封装对象，是一个接口, springmvc框架提供了很多的View视图类型，包括：jspview，pdfview,jstlView、freemarkerView、pdfView等。一般情况下需要通过页面标签或页面模版技术将模型数据通过页面展示给用户，需要由程序员根据业务需求开发具体的页面。</font>
+> 7. **<font style="color:#FA541C;">View</font>**<font style="color:#FA541C;">:  </font><font style="color:#FA541C;">是springmvc的封装对象，是一个接口, springmvc框架提供了很多的View视图类型，包括：jspview，pdfview,jstlView、freemarkerView、pdfView等。一般情况下需要通过页面标签或页面模版技术将模型数据通过页面展示给用户，需要由程序员根据业务需求开发具体的页面。</font>
 >
 
 ![](https://cdn.nlark.com/yuque/0/2021/webp/12493416/1618284707674-d6febc14-352e-4c70-ad6f-e95437734814.webp)
@@ -827,12 +824,6 @@ A的某个field或者setter依赖了B的实例对象，同时B的某个field或�
 
 ## 12. @RequestMapping 的作用是什么？ 
 将 http 请求映射到相应的类/方法上。
-
-<font style="color:#F5222D;"></font>
-
-<font style="color:#F5222D;"></font>
-
-<font style="color:#F5222D;"></font>
 
 
 
